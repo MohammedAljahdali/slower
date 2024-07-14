@@ -106,14 +106,17 @@ class ServerModelProxy(ABC):
         """
 
     def __check_dtype(self, d, base_type):
-        for value in d.values():
+        for key, value in d.items():
             if isinstance(value, base_type):
                 continue
             elif isinstance(value, list) and all(isinstance(item, base_type) for item in value):
-                continue
+                if all(isinstance(item, base_type) for item in value):
+                    continue
+                else:
+                    item_types = {type(item) for item in value}
+                    raise ValueError(f"Expected list of {base_type} but got list with types {item_types} for {key}")
             else:
-                return False
-        return True
+                raise ValueError(f"Expected {base_type} but got {type(value)} for {key}")
 
     def __parse_request_args(self, *args, **kwargs):
         if len(args) == 1:
@@ -122,7 +125,7 @@ class ServerModelProxy(ABC):
             request_format = _RequestFormat.RAW
 
         else:
-            assert self.__check_dtype(kwargs, np.ndarray)
+            self.__check_dtype(kwargs, np.ndarray)
             data = ndarray_dict_to_bytes(kwargs)
             request_format = _RequestFormat.NUMPY
 
